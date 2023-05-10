@@ -65,6 +65,31 @@ class Strategy:
         self.plusDI = plusDI.iloc[-1]
         self.minusDI = minusDI.iloc[-1]
 
+        '''
+        STOCHRSI.run(
+            close,
+            length=Default(value=None),
+            rsi_length=Default(value=None),
+            k=Default(value=None),
+            d=Default(value=None),
+            mamode=Default(value=None),
+            offset=Default(value=None),
+            short_name='stochrsi',
+            hide_params=None,
+            hide_default=True,
+            **kwargs
+        ):
+            * Run `STOCHRSI` indicator.
+            
+            * Inputs: `close`
+            * Parameters: `length`, `rsi_length`, `k`, `d`, `mamode`, `offset`
+            * Outputs: `stochrsik`, `stochrsid`
+            
+            Pass a list of parameter names as `hide_params` to hide their column levels, or True to hide all.
+            Set `hide_default` to False to show the column levels of the parameters with a default value.
+            
+            Other keyword arguments are passed to `STOCHRSI.run_pipeline`.
+        '''
 
         stoch_rsi = vbt.pandas_ta("STOCHRSI").run(
             close_price, 
@@ -75,6 +100,29 @@ class Strategy:
         )
         self.k = stoch_rsi.stochrsid.iloc[-1]
         self.d = stoch_rsi.stochrsik.iloc[-1]
+
+        '''
+        EMA.run(
+            close,
+            length=Default(value=None),
+            talib=Default(value=None),
+            offset=Default(value=None),
+            short_name='ema',
+            hide_params=None,
+            hide_default=True,
+            **kwargs
+        ):
+            Run `EMA` indicator.
+            
+            * Inputs: `close`
+            * Parameters: `length`, `talib`, `offset`
+            * Outputs: `ema`
+            
+            Pass a list of parameter names as `hide_params` to hide their column levels, or True to hide all.
+            Set `hide_default` to False to show the column levels of the parameters with a default value.
+            
+            Other keyword arguments are passed to `EMA.run_pipeline`.
+        '''
 
         ema = vbt.pandas_ta("EMA").run(
             close_price, 
