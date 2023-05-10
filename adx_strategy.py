@@ -65,6 +65,7 @@ class Strategy:
         self.plusDI = plusDI.iloc[-1]
         self.minusDI = minusDI.iloc[-1]
 
+
         stoch_rsi = vbt.pandas_ta("STOCHRSI").run(
             close_price, 
             length=self.stochastic_setting.stochastic_lenght, 
@@ -74,4 +75,17 @@ class Strategy:
         )
         self.k = stoch_rsi.stochrsid.iloc[-1]
         self.d = stoch_rsi.stochrsik.iloc[-1]
+
+        ema = vbt.pandas_ta("EMA").run(
+            close_price, 
+            length=self.ema_setting.ema_length,
+        )
+        self.ema = ema.ema.iloc[-1]
+        
+        ema_short = vbt.pandas_ta("EMA").run(
+            close_price,
+            length=self.ema_setting.ema_short_length,
+        )
+
+        self.ema_short = ema_short.ema.iloc[-1]
 
