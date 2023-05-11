@@ -137,3 +137,47 @@ class Strategy:
 
         self.ema_short = ema_short.ema.iloc[-1]
 
+    def condition(self, lastest_close_price: float):
+        # Open long position
+        self.buy_condition = (
+            (self.plusDI > self.minusDI) and \
+            (self.plusDI >= adxSetting.adx_level) and \
+            ((self.plusDI - self.minusDI) >= adxSetting.adx_diff)
+        )
+        
+        # Open short position
+        self.sell_condition = (
+            (self.minusDI > self.plusDI) and \
+            (self.minusDI >= adxSetting.adx_level) and \
+            ((self.minusDI - self.plusDI) >= adxSetting.adx_diff)
+        )
+        
+        # Close long position
+        self.close_long_condition = (
+            (self.plusDI < self.minusDI) or \
+            (self.plusDI <= adxSetting.adx_level)
+        )
+        
+        # Close short position
+        self.close_short_condition = (
+            (self.minusDI < self.plusDI) or \
+            (self.minusDI <= adxSetting.adx_level)
+        )
+        
+        # Condition based on EMA
+        price_above_ema = lastest_close_price > self.ema
+        price_below_ema = lastest_close_price < self.ema
+        price_above_short_ema = lastest_close_price > self.ema_short
+        price_below_short_ema = lastest_close_price < self.ema_short
+        
+        # Condition based on Stochastic RSI
+        stoc_ob = (
+            (self.k >= self.stochastic_setting.overbought_level) and \
+            (self.d >= self.stochastic_setting.overbought_level)
+        )
+        stoc_os = (
+            (self.k <= self.stochastic_setting.oversold_level) and \
+            (self.d <= self.stochastic_setting.oversold_level)
+        )
+        run_trend_up = self.k > self.d
+        run_trend_down = self.k < self.d
