@@ -47,7 +47,6 @@ class Portfolio:
             order=order,
             update_value=True,
         )
-        return order_result
 
     def create_long_order(
         self, size: float, price: float,
@@ -71,8 +70,16 @@ class Portfolio:
 
     def create_close_short(self, price: float) -> vbt.portfolio.enums.Order:
         order = self.create_order(
+            size=self.get_position(),
+            price=price,
+            direction=1
+        )
+        return order
+
+    def create_close_long(self, price: float) -> vbt.portfolio.enums.Order:
+        order = self.create_order(
             size=-self.get_position(),
             price=price,
-            direction=2
+            direction=0
         )
         return order
