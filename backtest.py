@@ -4,7 +4,7 @@ import vectorbtpro as vbt
 from datetime import datetime, timedelta
 from typing import Union
 
-from adx_strategy import Strategy
+from adx_strategy_no import Strategy
 
 
 class Backtest():
@@ -30,13 +30,13 @@ class Backtest():
             if time_frame == '1m':
                 self.start_date = start_date - \
                     timedelta(minutes=self.window_size)
-                self.bar_range = int(end_date - start_date)
-                self.bar_range = self.bar_range.total_seconds() / 60.0
+                self.bar_range = end_date - start_date
+                self.bar_range = int(self.bar_range.total_seconds() / 60.0)
             elif time_frame == '1h':
                 self.start_date = start_date - \
                     timedelta(hours=self.window_size)
-                self.bar_range = int(end_date - start_date)
-                self.bar_range = self.bar_range.total_seconds() / 3600.0
+                self.bar_range = end_date - start_date
+                self.bar_range = int(self.bar_range.total_seconds() / 3600.0)
         else:
             if time_frame == '1m':
                 self.start_date = self.lastest_date - \
@@ -77,18 +77,27 @@ class Backtest():
         for index in range(1, self.bar_range + 1):
             data = self.data[index:index + self.window_size]
 
+            self.strategy.execute_order(
+                close_price=data["Close"].iloc[-1],
+                open_price=data["Open"].iloc[-1],
+            )
+
             self.strategy.compute_signal(
                 close_price=data["Close"],
                 high_price=data["High"],
                 low_price=data["Low"],
             )
 
-            print()
+            self.strategy.condition(close_price=data["Close"].iloc[-1])
+
+            print(data.index[-1])
+            print(self.strategy.port.port)
+            print("--------------------------")
 
 
 if __name__ == '__main__':
-    start_date = datetime.strptime("2023-05-05 00:00:00", "%Y-%m-%d %H:%M:%S")
-    end_date = datetime.strptime("2023-05-10 21:00:00", "%Y-%m-%d %H:%M:%S")
+    start_date = datetime.strptime("2023-05-10 00:00:00", "%Y-%m-%d %H:%M:%S")
+    end_date = datetime.strptime("2023-05-10 23:00:00", "%Y-%m-%d %H:%M:%S")
     sim = Backtest(
         symbol="opusdt",
         start_date=start_date,

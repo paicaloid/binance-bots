@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import vectorbtpro as vbt
 
 from pydantic import BaseSettings
@@ -58,12 +59,36 @@ class Strategy:
         self.port = Portfolio()
         self.list_of_orders = []
 
+        self.buy_condition: bool = False
+        self.sell_condition: bool = False
+        self.close_long_condition: bool = False
+        self.close_short_condition: bool = False
+
+        self.price_above_ema: bool = False
+        self.price_below_ema: bool = False
+        self.price_above_short_ema: bool = False
+        self.price_below_short_ema: bool = False
+
+        self.stoc_ob: bool = False
+        self.stoc_os: bool = False
+
+        self.run_trend_up: bool = False
+        self.run_trend_down: bool = False
+
+        self.adx: float = 0.0
+        self.plusDI: float = 0.0
+        self.minusDI: float = 0.0
+        self.k: float = 0.0
+        self.d: float = 0.0
+        self.ema: float = 0.0
+        self.ema_short: float = 0.0
+
     def compute_signal(
         self,
         close_price: pd.Series,
         high_price: pd.Series,
         low_price: pd.Series,
-    ):
+    ) -> None:
         adx, plusDI, minusDI = ADX(
             high=high_price,
             low=low_price,
@@ -110,8 +135,8 @@ class Strategy:
             k=self.stochastic_setting.smooth_k,
             d=self.stochastic_setting.smooth_d,
         )
-        self.k = stoch_rsi.stochrsid.iloc[-1]
-        self.d = stoch_rsi.stochrsik.iloc[-1]
+        self.k = stoch_rsi.stochrsik.iloc[-1]
+        self.d = stoch_rsi.stochrsid.iloc[-1]
 
         '''
         EMA.run(
@@ -151,7 +176,7 @@ class Strategy:
 
         self.ema_short = ema_short.ema.iloc[-1]
 
-    def condition(self, close_price: float):
+    def condition(self, close_price: float) -> None:
         self.buy_condition = (
             (self.plusDI > self.minusDI) and
             (self.plusDI > self.adx_setting.adx_level) and
@@ -189,6 +214,53 @@ class Strategy:
         )
         self.run_trend_up = self.k > self.d
         self.run_trend_down = self.k < self.d
+
+    def execute_order(
+        self, close_price: float, open_price: float,
+    ) -> None:
+        current_position = self.port.get_position()
+
+        if self.buy_condition:
+            if current_position < 0 and self.price_above_ema:
+                print("Close Short")
+                order = self.port.create_close_short(price=open_price)
+                self.port.process_order(order=order)
+            elif current_position > 0:
+                print("TP/SL/TS")
+            elif self.run_trend_up and self.price_above_ema and \
+                    self.price_above_short_ema:
+                print("Open Long")
+                order = self.port.create_long_order(
+                    size=np.inf, price=open_price
+                )
+                self.port.process_order(order=order)
+
+        if current_position > 0:
+            if self.close_long_condition or self.price_below_ema:
+                print("Exit Long")
+                order = self.port.create_close_long(price=open_price)
+                self.port.process_order(order=order)
+
+        if self.sell_condition:
+            if current_position > 0 and self.price_below_ema:
+                print("Close Long")
+                order = self.port.create_close_long(price=open_price)
+                self.port.process_order(order=order)
+            elif current_position < 0:
+                print("TP/SL/TS")
+            elif self.run_trend_down and self.price_below_ema and \
+                    self.price_below_short_ema:
+                print("Open Short")
+                order = self.port.create_short_order(
+                    size=np.inf, price=open_price
+                )
+                self.port.process_order(order=order)
+
+        if current_position < 0:
+            if self.close_short_condition or self.price_above_ema:
+                print("Exit Short")
+                order = self.port.create_close_short(price=open_price)
+                self.port.process_order(order=order)
 
     # def place_order(self):
     #     current_position = self.port.get_position()
