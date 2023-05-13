@@ -35,7 +35,7 @@ class Portfolio:
             size=size,
             price=price,
             direction=direction,
-            size_granularity=1.0,
+            # size_granularity=1.0,
             log=True
         )
         return order
