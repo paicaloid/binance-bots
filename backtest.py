@@ -80,6 +80,8 @@ class Backtest():
             self.strategy.execute_order(
                 close_price=data["Close"].iloc[-1],
                 open_price=data["Open"].iloc[-1],
+                high_price=data["High"].iloc[-1],
+                low_price=data["Low"].iloc[-1],
             )
 
             self.strategy.compute_signal(
@@ -96,8 +98,8 @@ class Backtest():
 
 
 if __name__ == '__main__':
-    start_date = datetime.strptime("2023-05-10 00:00:00", "%Y-%m-%d %H:%M:%S")
-    end_date = datetime.strptime("2023-05-10 23:00:00", "%Y-%m-%d %H:%M:%S")
+    start_date = datetime.strptime("2023-05-11 00:00:00", "%Y-%m-%d %H:%M:%S")
+    end_date = datetime.strptime("2023-05-11 23:00:00", "%Y-%m-%d %H:%M:%S")
     sim = Backtest(
         symbol="opusdt",
         start_date=start_date,
