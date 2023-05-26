@@ -340,7 +340,7 @@ class Strategy:
             if(not trade):
                 self.long_tp_sl_ts(high_price=high_price, low_price=low_price)
 
-            if self.close_long_condition or self.price_below_ema:
+            if ((self.close_long_condition or self.price_below_ema) and self.port.get_position() > 0):
                 print("Exit Long")
                 self.save.append("Exit Long")
                 order = self.port.create_close_long(price=open_price)
@@ -375,7 +375,7 @@ class Strategy:
             if(not trade):
                 self.short_tp_sl_ts(high_price=high_price, low_price=low_price)
 
-            if self.close_short_condition or self.price_above_ema:
+            if ((self.close_short_condition or self.price_above_ema) and self.port.get_position() < 0):
                 print("Exit Short")
                 self.save.append("Exit Short")
                 order = self.port.create_close_short(price=open_price)

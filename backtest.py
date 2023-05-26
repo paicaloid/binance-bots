@@ -100,15 +100,15 @@ class Backtest():
 
 
 if __name__ == '__main__':
-    start_date = datetime.strptime("2023-05-25 16:10:00", "%Y-%m-%d %H:%M:%S")
-    end_date = datetime.strptime("2023-05-25 17:29:00", "%Y-%m-%d %H:%M:%S")
+    start_date = datetime.strptime("2023-05-23 16:00:00", "%Y-%m-%d %H:%M:%S")
+    end_date = datetime.strptime("2023-05-25 16:00:00", "%Y-%m-%d %H:%M:%S")
     sim = Backtest(
         symbol="opusdt",
         start_date=start_date,
         end_date=end_date,
         bar_range=239,
         window_size=250,
-        time_frame="1m",
+        time_frame="1h",
     )
     sim.get_historical_data()
     sim.simulate()
