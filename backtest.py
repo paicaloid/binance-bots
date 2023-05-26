@@ -82,6 +82,7 @@ class Backtest():
                 open_price=data["Open"].iloc[-1],
                 high_price=data["High"].iloc[-1],
                 low_price=data["Low"].iloc[-1],
+                trade=False
             )
 
             self.strategy.compute_signal(
@@ -92,21 +93,22 @@ class Backtest():
 
             self.strategy.condition(close_price=data["Close"].iloc[-1])
 
-            print(data.index[-1])
-            print(self.strategy.port.port)
+            print(data.index[-1],data["High"].iloc[-1],data["Low"].iloc[-1])
+            print(self.strategy.short_take_profit,self.strategy.short_stop_loss,self.strategy.short_trail_stop_activate,self.strategy.short_trail_stop_execute)
+            # print(self.strategy.port.port)
             print("--------------------------")
 
 
 if __name__ == '__main__':
-    start_date = datetime.strptime("2023-05-08 02:00:00", "%Y-%m-%d %H:%M:%S")
-    end_date = datetime.strptime("2023-05-08 23:00:00", "%Y-%m-%d %H:%M:%S")
+    start_date = datetime.strptime("2023-05-25 16:10:00", "%Y-%m-%d %H:%M:%S")
+    end_date = datetime.strptime("2023-05-25 17:29:00", "%Y-%m-%d %H:%M:%S")
     sim = Backtest(
         symbol="opusdt",
         start_date=start_date,
         end_date=end_date,
         bar_range=239,
         window_size=250,
-        time_frame="1h",
+        time_frame="1m",
     )
     sim.get_historical_data()
     sim.simulate()

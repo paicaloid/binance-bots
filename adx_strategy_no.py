@@ -99,6 +99,10 @@ class Strategy:
 
         self.current_position: float = 0.0
 
+        self.tp_sl_activate = False
+
+        self.save = []
+
     def compute_signal(
         self,
         close_price: pd.Series,
@@ -195,14 +199,14 @@ class Strategy:
     def condition(self, close_price: float) -> None:
         self.buy_condition = (
             (self.plusDI > self.minusDI) and
-            (self.plusDI > self.adx_setting.adx_level) and
-            (self.plusDI - self.minusDI > self.adx_setting.adx_diff)
+            (self.plusDI >= self.adx_setting.adx_level) and
+            (self.plusDI - self.minusDI >= self.adx_setting.adx_diff)
         )
 
         self.sell_condition = (
             (self.minusDI > self.plusDI) and
-            (self.minusDI > self.adx_setting.adx_level) and
-            (self.minusDI - self.plusDI > self.adx_setting.adx_diff)
+            (self.minusDI >= self.adx_setting.adx_level) and
+            (self.minusDI - self.plusDI >= self.adx_setting.adx_diff)
         )
 
         self.close_long_condition = (
@@ -234,79 +238,149 @@ class Strategy:
     def update_position(self) -> None:
         self.current_position = self.port.get_position()
 
-    def execute_order(
-        self, close_price: float, open_price: float,
-        high_price: float, low_price: float,
-    ) -> None:
+    def long_tp_sl_ts(self,high_price: float, low_price : float):
+        if self.port.get_position() > 0:
+            if self.tp_sl_activate:
+                #check tp_sl_ts
+                self.update_long_highest_price(high_price=high_price)
 
-        self.update_position()
+                if self.long_highest_price > self.long_trail_stop_activate:
+                    self.long_ts_activate = True
 
-        if self.buy_condition:
-            if self.current_position < 0 and self.price_above_ema:
-                print("Close Short")
-                order = self.port.create_close_short(price=open_price)
-                self.port.process_order(order=order)
-            elif self.current_position > 0:
-                print("TP/SL/TS")
-            elif self.run_trend_up and self.price_above_ema and \
-                    self.price_above_short_ema:
-                print("Open Long")
-                order = self.port.create_long_order(
-                    size=np.inf, price=open_price
-                )
-                self.port.process_order(order=order)
-
-        elif self.current_position > 0:
-            if self.close_long_condition or self.price_below_ema:
-                print("Exit Long")
-                order = self.port.create_close_long(price=open_price)
-                self.port.process_order(order=order)
-
-        elif self.sell_condition:
-            if self.current_position > 0 and self.price_below_ema:
-                print("Close Long")
-                order = self.port.create_close_long(price=open_price)
-                self.port.process_order(order=order)
-            elif self.current_position < 0:
-
-                self.update_short_lowest_price(low_price=low_price)
-                self.update_short_activation_price(low_price=low_price)
-
-                if self.short_trail_stop_activate is not None:
-                    self.short_trail_stop_execute = self.short_trail_stop_activate * \
+                if self.long_ts_activate:
+                    self.long_trail_stop_execute = self.long_highest_price * \
                         (1 - self.sl_tp_ts_setting.trail_stop_execute)
 
-                    if low_price < self.short_trail_stop_execute:
+                    if low_price < self.long_trail_stop_execute:
                         print("TS")
-                        order = self.port.create_close_short(price=open_price)
+                        self.save.append("TS")
+                        order = self.port.create_close_long(price=self.long_trail_stop_execute)
                         self.port.process_order(order=order)
 
-                if high_price > self.short_stop_loss and \
+                elif high_price > self.long_stop_loss and \
+                        low_price < self.long_stop_loss:
+                    print("SL")
+                    self.save.append("SL")
+                    order = self.port.create_close_long(price=self.long_stop_loss)
+                    self.port.process_order(order=order)
+
+                elif high_price > self.long_take_profit and \
+                        low_price < self.long_take_profit:
+                    print("TP")
+                    self.save.append("TP")
+                    order = self.port.create_close_long(price=self.long_take_profit)
+                    self.port.process_order(order=order)
+        
+    def short_tp_sl_ts(self,high_price : float, low_price : float):
+        if self.tp_sl_activate:
+                #check tp sl ts
+                self.update_short_lowest_price(low_price=low_price)
+
+                if self.short_lowest_price < self.short_trail_stop_activate:
+                    self.short_ts_activate = True
+
+                if self.short_ts_activate:
+                    self.short_trail_stop_execute = self.short_lowest_price * \
+                        (1 + self.sl_tp_ts_setting.trail_stop_execute)
+
+                    if high_price > self.short_trail_stop_execute:
+                        print("TS")
+                        self.save.append("TS")
+                        order = self.port.create_close_short(price=self.short_trail_stop_execute)
+                        self.port.process_order(order=order)
+
+                elif high_price > self.short_stop_loss and \
                         low_price < self.short_stop_loss:
                     print("SL")
-                    order = self.port.create_close_short(price=open_price)
+                    self.save.append("SL")
+                    order = self.port.create_close_short(price=self.short_stop_loss)
                     self.port.process_order(order=order)
 
                 elif high_price > self.short_take_profit and \
                         low_price < self.short_take_profit:
                     print("TP")
-                    order = self.port.create_close_short(price=open_price)
+                    self.save.append("TP")
+                    order = self.port.create_close_short(price=self.short_take_profit)
                     self.port.process_order(order=order)
 
+
+    def execute_order(
+        self, close_price: float, open_price: float,
+        high_price: float, low_price: float, trade : bool
+    ) -> None:
+
+        self.update_position()
+
+
+        if self.buy_condition:
+            if self.port.get_position() < 0 and self.price_above_ema:
+                print("Close Short")
+                self.save.append("Close Short")
+                order = self.port.create_close_short(price=open_price)
+                self.port.process_order(order=order)
+            elif self.current_position > 0:
+                #activate tp sl ts
+                self.tp_sl_activate = True
+
+            elif self.run_trend_up and self.price_above_ema and \
+                    self.price_above_short_ema and self.current_position == 0:
+                print("Open Long")
+                self.save.append("Open Long")
+                order = self.port.create_long_order(
+                    size=np.inf, price=open_price
+                )
+                self.port.process_order(order=order)
+                self.set_long_sl_tp_tr(price=open_price)
+                self.long_ts_activate = False
+                self.long_highest_price = high_price
+                self.tp_sl_activate = False
+
+
+        if self.port.get_position() > 0:
+            if(not trade):
+                self.long_tp_sl_ts(high_price=high_price, low_price=low_price)
+
+            if self.close_long_condition or self.price_below_ema:
+                print("Exit Long")
+                self.save.append("Exit Long")
+                order = self.port.create_close_long(price=open_price)
+                self.port.process_order(order=order)
+
+
+        if self.sell_condition:
+            if self.port.get_position() > 0 and self.price_below_ema:
+                print("Close Long")
+                self.save.append("Close Long")
+                order = self.port.create_close_long(price=open_price)
+                self.port.process_order(order=order)
+            elif self.current_position < 0:
+                #activate tp sl ts
+                self.tp_sl_activate = True
+
             elif self.run_trend_down and self.price_below_ema and \
-                    self.price_below_short_ema:
+                    self.price_below_short_ema and self.current_position == 0:
                 print("Open Short")
+                self.save.append("Open Short")
                 order = self.port.create_short_order(
                     size=np.inf, price=open_price
                 )
                 self.port.process_order(order=order)
                 self.set_short_sl_tp_tr(price=open_price)
+                self.short_ts_activate = False
+                self.short_lowest_price = low_price
+                self.tp_sl_activate = False
 
-        elif self.current_position < 0:
+        
+        if self.port.get_position() < 0:
+            if(not trade):
+                self.short_tp_sl_ts(high_price=high_price, low_price=low_price)
+
             if self.close_short_condition or self.price_above_ema:
                 print("Exit Short")
+                self.save.append("Exit Short")
                 order = self.port.create_close_short(price=open_price)
                 self.port.process_order(order=order)
+
 
     def set_short_sl_tp_tr(self, price: float) -> None:
         self.short_stop_loss = price * \
