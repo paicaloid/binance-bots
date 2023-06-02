@@ -114,9 +114,26 @@ class BinanceWebsocketHandler:
         # ref https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md#klinecandlestick-streams
         bar = msg['k']
         is_close = bar['x']
-        high_1_tick = bar["h"]
-        low_1_tick = bar["l"]
+        high_1_tick = float(bar["h"])
+        low_1_tick = float(bar["l"])
+        # print(low_1_tick,type(low_1_tick))
+        # print(high_1_tick,type(high_1_tick))
+
+        if(self.strategy.port.get_position() > 0):
+            self.strategy.long_tp_sl_ts(high_price=high_1_tick,low_price=low_1_tick)
+        elif (self.strategy.port.get_position() < 0):
+            self.strategy.short_tp_sl_ts(high_price=high_1_tick,low_price=low_1_tick)
         
+        if (len(self.strategy.save) != 0):
+            action = self.strategy.save.pop(0)
+            to_write = [datetime.now(tz=self.tz),action]
+            with open('trade_data3.csv', 'a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(to_write)
+                print("High",high_1_tick)
+                print("Low",low_1_tick)
+                print("--------------------------")
+
         if is_close:
             cur_date = datetime.fromtimestamp(bar['t']/1000, tz=self.tz)
             
@@ -158,7 +175,7 @@ class BinanceWebsocketHandler:
                         self.data["High"].iloc[-1], self.data["Low"].iloc[-1],
                         self.data["Close"].iloc[-1], self.strategy.ema, self.strategy.ema_short,
                         self.strategy.plusDI,self.strategy.minusDI]
-            with open('trade_data.csv', 'a', newline='') as file:
+            with open('trade_data3.csv', 'a', newline='') as file:
                 writer = csv.writer(file)
                 writer.writerow(to_write)
 
@@ -167,11 +184,7 @@ class BinanceWebsocketHandler:
             print("--------------------------")
             # Create order for next bar
             # self.indicators.calculate_order(cur_date=cur_date)
-        else:
-            if(self.strategy.port.get_position() > 0):
-                self.strategy.long_tp_sl_ts(high_price=high_1_tick,low_price=low_1_tick)
-            elif (self.strategy.port.get_position() < 0):
-                self.strategy.short_tp_sl_ts(high_price=high_1_tick,low_price=low_1_tick)
+
 
     async def handle_kline_1s_message(self, message):
         # print(f'Trade message received')

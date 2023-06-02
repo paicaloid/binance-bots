@@ -399,13 +399,11 @@ class Strategy:
             (1 + self.sl_tp_ts_setting.trail_stop_activate)
 
     def update_long_highest_price(self, high_price: float) -> None:
-        if self.long_highest_price is None or \
-                high_price > self.long_highest_price:
+        if high_price > self.long_highest_price:
             self.long_highest_price = high_price
 
     def update_short_lowest_price(self, low_price: float) -> None:
-        if self.short_lowest_price is None or \
-                low_price < self.short_lowest_price:
+        if low_price < self.short_lowest_price:
             self.short_lowest_price = low_price
 
     def update_long_activation_price(self, high_price: float) -> None:
