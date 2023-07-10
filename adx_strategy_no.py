@@ -3,6 +3,7 @@ import numpy as np
 import vectorbtpro as vbt
 
 from pydantic import BaseSettings
+from typing import Union
 
 from indicators.adx import ADX
 from port import Portfolio
@@ -35,7 +36,7 @@ class stochasticSetting(BaseSettings):
 
 class stopSetting(BaseSettings):
     stop_loss: float = 0.03
-    take_profit: float = 0.16
+    take_profit: float = 0.06
     trail_stop_activate: float = 0.01
     trail_stop_execute: float = 0.001
 
@@ -92,6 +93,11 @@ class Strategy:
         self.short_take_profit: float = 0.0
         self.short_trail_stop_activate: float = 0.0
         self.short_trail_stop_execute: float = 0.0
+
+        self.long_highest_price: Union[float, None] = None
+        self.short_lowest_price: Union[float, None] = None
+
+        self.current_position: float = 0.0
 
     def compute_signal(
         self,
@@ -225,18 +231,22 @@ class Strategy:
         self.run_trend_up = self.k > self.d
         self.run_trend_down = self.k < self.d
 
+    def update_position(self) -> None:
+        self.current_position = self.port.get_position()
+
     def execute_order(
         self, close_price: float, open_price: float,
         high_price: float, low_price: float,
     ) -> None:
-        current_position = self.port.get_position()
+
+        self.update_position()
 
         if self.buy_condition:
-            if current_position < 0 and self.price_above_ema:
+            if self.current_position < 0 and self.price_above_ema:
                 print("Close Short")
                 order = self.port.create_close_short(price=open_price)
                 self.port.process_order(order=order)
-            elif current_position > 0:
+            elif self.current_position > 0:
                 print("TP/SL/TS")
             elif self.run_trend_up and self.price_above_ema and \
                     self.price_above_short_ema:
@@ -246,29 +256,43 @@ class Strategy:
                 )
                 self.port.process_order(order=order)
 
-        if current_position > 0:
+        elif self.current_position > 0:
             if self.close_long_condition or self.price_below_ema:
                 print("Exit Long")
                 order = self.port.create_close_long(price=open_price)
                 self.port.process_order(order=order)
 
-        if self.sell_condition:
-            if current_position > 0 and self.price_below_ema:
+        elif self.sell_condition:
+            if self.current_position > 0 and self.price_below_ema:
                 print("Close Long")
                 order = self.port.create_close_long(price=open_price)
                 self.port.process_order(order=order)
-            elif current_position < 0:
-                # if open_price > self.short_stop_loss:
+            elif self.current_position < 0:
+
+                self.update_short_lowest_price(low_price=low_price)
+                self.update_short_activation_price(low_price=low_price)
+
+                if self.short_trail_stop_activate is not None:
+                    self.short_trail_stop_execute = self.short_trail_stop_activate * \
+                        (1 - self.sl_tp_ts_setting.trail_stop_execute)
+
+                    if low_price < self.short_trail_stop_execute:
+                        print("TS")
+                        order = self.port.create_close_short(price=open_price)
+                        self.port.process_order(order=order)
+
                 if high_price > self.short_stop_loss and \
                         low_price < self.short_stop_loss:
                     print("SL")
                     order = self.port.create_close_short(price=open_price)
                     self.port.process_order(order=order)
+
                 elif high_price > self.short_take_profit and \
                         low_price < self.short_take_profit:
                     print("TP")
                     order = self.port.create_close_short(price=open_price)
                     self.port.process_order(order=order)
+
             elif self.run_trend_down and self.price_below_ema and \
                     self.price_below_short_ema:
                 print("Open Short")
@@ -278,7 +302,7 @@ class Strategy:
                 self.port.process_order(order=order)
                 self.set_short_sl_tp_tr(price=open_price)
 
-        if current_position < 0:
+        elif self.current_position < 0:
             if self.close_short_condition or self.price_above_ema:
                 print("Exit Short")
                 order = self.port.create_close_short(price=open_price)
@@ -300,5 +324,24 @@ class Strategy:
         self.long_trail_stop_activate = price * \
             (1 + self.sl_tp_ts_setting.trail_stop_activate)
 
-    def update_short_trailing_stop(self) -> None:
-        pass
+    def update_long_highest_price(self, high_price: float) -> None:
+        if self.long_highest_price is None or \
+                high_price > self.long_highest_price:
+            self.long_highest_price = high_price
+
+    def update_short_lowest_price(self, low_price: float) -> None:
+        if self.short_lowest_price is None or \
+                low_price < self.short_lowest_price:
+            self.short_lowest_price = low_price
+
+    def update_long_activation_price(self, high_price: float) -> None:
+        if self.long_trail_stop_activate is None or \
+                high_price > self.long_trail_stop_activate * \
+                (1 + self.sl_tp_ts_setting.trail_stop_activate):
+            self.long_trail_stop_activate = high_price
+
+    def update_short_activation_price(self, low_price: float) -> None:
+        if self.short_trail_stop_activate is None or \
+                low_price < self.short_trail_stop_activate * \
+                (1 - self.sl_tp_ts_setting.trail_stop_activate):
+            self.short_trail_stop_activate = low_price
