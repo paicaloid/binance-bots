@@ -54,6 +54,9 @@ class Strategy:
 
         self.current_position: float = 0.0
 
+        self.long_highest_price: float = None
+        self.short_lowest_price: float = None
+
     def compute_signal(
         self,
         close_price: pd.Series,
@@ -255,5 +258,40 @@ class Strategy:
                 print("Take Profit")
                 self.current_position = 0
             elif close_price <= self.long_stop_loss:
+                print("Stop Loss")
+                self.current_position = 0
+
+    def execute_stop_order_long_backtest(
+        self,
+        close_price: float,
+        open_price: float,
+        high_price: float,
+        low_price: float,
+    ) -> None:
+        '''
+            Check high price against trail stop activation
+            For backtesting purposes: use high price instead of current price
+        '''
+        if self.current_position > 0:
+
+            if high_price >= self.long_trail_stop_activate:
+                print("Trail Stop Activate")
+                if self.long_highest_price is None or \
+                        high_price > self.long_highest_price:
+                    self.long_highest_price = high_price
+
+                if self.long_highest_price is not None:
+                    self.long_trail_stop = self.long_highest_price * \
+                        (1 - self.stop_setting.trail_stop_execute)
+                    if high_price <= self.long_trail_stop:
+                        benchmark = self.long_highest_price
+                        ts = self.long_trail_stop
+                        print(f"TSL | bm: {benchmark} | trail stop: {ts}")
+                        self.current_position = 0
+
+            if high_price >= self.long_take_profit:
+                print("Take Profit")
+                self.current_position = 0
+            elif high_price <= self.long_stop_loss:
                 print("Stop Loss")
                 self.current_position = 0

@@ -93,12 +93,21 @@ class Backtest:
                 high_price=data['High'].iloc[-1],
                 low_price=data['Low'].iloc[-1],
             )
+
             # self.strategy.execute_order_short(
             #     close_price=data['Close'].iloc[-1],
             #     open_price=data['Open'].iloc[-1],
             #     high_price=data['High'].iloc[-1],
             #     low_price=data['Low'].iloc[-1],
             # )
+
+            self.strategy.execute_stop_order_long_backtest(
+                close_price=data['Close'].iloc[-1],
+                open_price=data['Open'].iloc[-1],
+                high_price=data['High'].iloc[-1],
+                low_price=data['Low'].iloc[-1],
+            )
+            print()
 
 
 if __name__ == '__main__':
