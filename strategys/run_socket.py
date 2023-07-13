@@ -89,8 +89,12 @@ class BinanceWebsocketHandler:
             elif 'kline_1h' in uri:
                 handle_message = self.handle_kline_1h_message
 
-            async for message in websocket:
-                await handle_message(message)
+            try:
+                async for message in websocket:
+                    await handle_message(message)
+            except asyncio.TimeoutError:
+                print(f"Connection to {uri} timed out. Retrying...")
+                await self.handle_socket(uri)  # retry connection
 
     async def run(self):
         await asyncio.gather(
