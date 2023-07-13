@@ -112,7 +112,7 @@ class Backtest:
 
 if __name__ == '__main__':
     start_date = datetime.strptime("2023-07-01 02:00:00", "%Y-%m-%d %H:%M:%S")
-    end_date = datetime.strptime("2023-07-12 23:00:00", "%Y-%m-%d %H:%M:%S")
+    end_date = datetime.strptime("2023-07-02 23:00:00", "%Y-%m-%d %H:%M:%S")
     sim = Backtest(
         symbol="opusdt",
         start_date=start_date,
