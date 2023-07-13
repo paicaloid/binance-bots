@@ -2,6 +2,7 @@ import pandas as pd
 import pytz
 import vectorbtpro as vbt
 from datetime import datetime, timedelta
+import logging
 
 
 def msg_to_dataframe(
@@ -10,7 +11,8 @@ def msg_to_dataframe(
     tz: pytz.timezone
 ) -> pd.DataFrame:
     cur_datetime = datetime.fromtimestamp(info['t']/1000, tz=tz)
-    print(cur_datetime)
+    # print(cur_datetime)
+    logging.info(cur_datetime)
     df = pd.DataFrame([info])
     df = df.drop(['T', 't', 's', 'i', 'f', 'L', 'x', 'B'], axis=1)
     df = df.rename(columns={
@@ -41,7 +43,8 @@ def get_historical_data(
     interval: str,
     bar_range: int,
 ) -> pd.DataFrame:
-    print("Preparing data...")
+    # print("Preparing data...")
+    logging.info("Preparing data...")
 
     date_now = datetime.now(
         tz=pytz.timezone('Asia/Bangkok')

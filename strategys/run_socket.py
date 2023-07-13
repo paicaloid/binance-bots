@@ -4,6 +4,7 @@ import pandas as pd
 import pytz
 # import vectorbtpro as vbt
 import websockets
+import logging
 
 from utils import get_historical_data, msg_to_dataframe
 from adx_strategy import Strategy
@@ -45,7 +46,9 @@ class BinanceWebsocketHandler:
     async def handle_trade_message(self, message) -> None:
         msg = json.loads(message)
         current_price = float(msg['p'])
-
+        self.strategy.execute_stop_order_long(
+            current_price=current_price,
+        )
 
     async def handle_kline_1m_message(self, message) -> None:
         msg = json.loads(message)
@@ -103,7 +106,8 @@ class BinanceWebsocketHandler:
                 async for message in websocket:
                     await handle_message(message)
             except asyncio.TimeoutError:
-                print(f"Connection to {uri} timed out. Retrying...")
+                logging.warning(f"Connection to {uri} timed out. Retrying...")
+                # print(f"Connection to {uri} timed out. Retrying...")
                 await self.handle_socket(uri)  # retry connection
             async for message in websocket:
                 await handle_message(message)
@@ -115,6 +119,12 @@ class BinanceWebsocketHandler:
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        filename="logfile",
+        filemode="a+",
+        # format="%(asctime)-15s %(levelname)-8s %(message)s"
+    )
     handler = BinanceWebsocketHandler(
         symbol='opusdt',
         interval='1m',
