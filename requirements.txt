@@ -5,3 +5,7 @@ sqlalchemy
 python-binance
 ipykernel
 python-dotenv
+websockets
+pydantic
+pydantic-settings
+pandas_ta
