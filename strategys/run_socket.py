@@ -98,7 +98,7 @@ class BinanceWebsocketHandler:
             if 'kline_1m' in uri:
                 handle_message = self.handle_kline_1m_message
             elif 'kline_1h' in uri:
-                handle_message = self.handle_kline_1h_message
+                handle_message = self.handle_kline_1m_message
             elif "trade" in uri:
                 handle_message = self.handle_trade_message
 
