@@ -4,6 +4,7 @@ import pandas as pd
 import pytz
 # import vectorbtpro as vbt
 import websockets
+import logging
 
 from utils import get_historical_data, msg_to_dataframe
 from adx_strategy import Strategy
@@ -27,6 +28,9 @@ class BinanceWebsocketHandler:
         self.connections.append(
             f'wss://stream.binance.com:9443/ws/{self.symbol}@kline_{interval}'
         )
+        self.connections.append(
+            f'wss://stream.binance.com:9443/ws/{self.symbol}@trade'
+        )
 
         self.data = get_historical_data(
             symbol=self.symbol,
@@ -39,38 +43,32 @@ class BinanceWebsocketHandler:
         self.data = pd.concat([self.data, lastest_df])
         self.data = self.data[-self.bar_range:]
 
+    async def handle_trade_message(self, message) -> None:
+        msg = json.loads(message)
+        current_price = float(msg['p'])
+        self.strategy.execute_stop_order_long(
+            current_price=current_price,
+        )
+
     async def handle_kline_1m_message(self, message) -> None:
         msg = json.loads(message)
         bar = msg['k']
         is_close = bar['x']
-        print(
-            "open: ", bar['o'],
-            "close: ", bar['c'],
-            "high: ", bar['h'],
-            "low: ", bar['l'],
-        )
-        self.strategy.execute_stop_order_long(
-            close_price=float(bar['c']),
-            open_price=float(bar['o']),
-            high_price=float(bar['h']),
-            low_price=float(bar['l']),
-        )
+        # print(
+        #     "open: ", bar['o'],
+        #     "close: ", bar['c'],
+        #     "high: ", bar['h'],
+        #     "low: ", bar['l'],
+        # )
+        # self.strategy.execute_stop_order_long(
+        #     close_price=float(bar['c']),
+        #     open_price=float(bar['o']),
+        #     high_price=float(bar['h']),
+        #     low_price=float(bar['l']),
+        # )
         if is_close:
             df = msg_to_dataframe(info=bar, interval=self.intreval, tz=self.tz)
             self.update_dataframe(df)
-
-            self.strategy.execute_order_long(
-                close_price=self.data['Close'].iloc[-1],
-                open_price=self.data['Open'].iloc[-1],
-                high_price=self.data['High'].iloc[-1],
-                low_price=self.data['Low'].iloc[-1],
-            )
-            self.strategy.execute_order_short(
-                close_price=self.data['Close'].iloc[-1],
-                open_price=self.data['Open'].iloc[-1],
-                high_price=self.data['High'].iloc[-1],
-                low_price=self.data['Low'].iloc[-1],
-            )
 
             self.strategy.compute_signal(
                 close_price=self.data['Close'],
@@ -82,19 +80,37 @@ class BinanceWebsocketHandler:
                 close_price=self.data['Close'].iloc[-1],
             )
 
+            self.strategy.execute_order_long(
+                close_price=self.data['Close'].iloc[-1],
+                open_price=self.data['Open'].iloc[-1],
+                high_price=self.data['High'].iloc[-1],
+                low_price=self.data['Low'].iloc[-1],
+            )
+            # self.strategy.execute_order_short(
+            #     close_price=self.data['Close'].iloc[-1],
+            #     open_price=self.data['Open'].iloc[-1],
+            #     high_price=self.data['High'].iloc[-1],
+            #     low_price=self.data['Low'].iloc[-1],
+            # )
+
     async def handle_socket(self, uri):
         async with websockets.connect(uri) as websocket:
             if 'kline_1m' in uri:
                 handle_message = self.handle_kline_1m_message
             elif 'kline_1h' in uri:
                 handle_message = self.handle_kline_1h_message
+            elif "trade" in uri:
+                handle_message = self.handle_trade_message
 
             try:
                 async for message in websocket:
                     await handle_message(message)
             except asyncio.TimeoutError:
-                print(f"Connection to {uri} timed out. Retrying...")
+                logging.warning(f"Connection to {uri} timed out. Retrying...")
+                # print(f"Connection to {uri} timed out. Retrying...")
                 await self.handle_socket(uri)  # retry connection
+            async for message in websocket:
+                await handle_message(message)
 
     async def run(self):
         await asyncio.gather(
@@ -103,6 +119,12 @@ class BinanceWebsocketHandler:
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        filename="logfile",
+        filemode="a+",
+        # format="%(asctime)-15s %(levelname)-8s %(message)s"
+    )
     handler = BinanceWebsocketHandler(
         symbol='opusdt',
         interval='1m',
