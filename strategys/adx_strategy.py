@@ -223,7 +223,7 @@ class Strategy:
 
                 if self.short_lowest_price is not None:
                     self.short_trail_stop = self.short_lowest_price * \
-                        (1 + self.stop_setting.trail_stop)
+                        (1 + self.stop_setting.trail_stop_execute)
                     if close_price >= self.short_trail_stop:
                         print("Trail Stop")
                         self.current_position = 0
@@ -249,7 +249,7 @@ class Strategy:
 
                 if self.long_highest_price is not None:
                     self.long_trail_stop = self.long_highest_price * \
-                        (1 - self.stop_setting.trail_stop)
+                        (1 - self.stop_setting.trail_stop_execute)
                     if close_price <= self.long_trail_stop:
                         print("Trail Stop")
                         self.current_position = 0
