@@ -39,6 +39,24 @@ class BinanceWebsocketHandler:
         )
         self.strategy = Strategy()
 
+        # Start Trade #
+        self.strategy.compute_signal(
+            close_price=self.data['Close'],
+            high_price=self.data['High'],
+            low_price=self.data['Low'],
+        )
+
+        self.strategy.condition(
+            close_price=self.data['Close'].iloc[-1],
+        )
+
+        self.strategy.execute_order_long(
+            close_price=self.data['Close'].iloc[-1],
+            open_price=self.data['Open'].iloc[-1],
+            high_price=self.data['High'].iloc[-1],
+            low_price=self.data['Low'].iloc[-1],
+        )
+
     def update_dataframe(self, lastest_df: pd.DataFrame) -> None:
         self.data = pd.concat([self.data, lastest_df])
         self.data = self.data[-self.bar_range:]
@@ -121,13 +139,13 @@ class BinanceWebsocketHandler:
 if __name__ == '__main__':
     logging.basicConfig(
         level=logging.INFO,
-        filename="logfile",
+        filename="logfile_3",
         filemode="a+",
         # format="%(asctime)-15s %(levelname)-8s %(message)s"
     )
     handler = BinanceWebsocketHandler(
         symbol='opusdt',
-        interval='1m',
+        interval='1h',
         # trade=True,
         bar_range=250,
         sql=False
