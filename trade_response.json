@@ -1,0 +1,18 @@
+{
+    "stream_type": "opusdt@trade",
+    "event_type": "trade",
+    "event_time": 1691659744749,
+    "symbol": "OPUSDT",
+    "trade_id": 42047963,
+    "price": "1.57100000",
+    "quantity": "26.03000000",
+    "buyer_order_id": 694428369,
+    "seller_order_id": 694428906,
+    "trade_time": 1691659744748,
+    "is_market_maker": True,
+    "ignore": True,
+    "unicorn_fied": [
+        "binance.com",
+        "0.12.2"
+    ]
+}

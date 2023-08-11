@@ -5,9 +5,10 @@ import logging
 
 # from typing import Union
 
-from adx import ADX
-from adx_config import adxSetting, emaSetting, rsiSetting
-from adx_config import stochasticSetting, stopSetting
+# from adx import ADX
+from .adx import ADX
+from .adx_config import adxSetting, emaSetting, rsiSetting
+from .adx_config import stochasticSetting, stopSetting
 
 
 class Strategy:
