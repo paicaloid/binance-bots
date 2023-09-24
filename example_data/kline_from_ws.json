@@ -1,0 +1,19 @@
+{
+    "kline_start_time": 1695544200000,
+    "kline_close_time": 1695545099999,
+    "symbol": "OPUSDT",
+    "interval": "15m",
+    "first_trade_id": False,
+    "last_trade_id": False,
+    "open_price": "1.28700000",
+    "close_price": "1.28700000",
+    "high_price": "1.28700000",
+    "low_price": "1.28700000",
+    "base_volume": "480.99000000",
+    "number_of_trades": 1,
+    "is_closed": False,
+    "quote": "619.03413000",
+    "taker_by_base_asset_volume": "480.99000000",
+    "taker_by_quote_asset_volume": "619.03413000",
+    "ignore": "0"
+}
