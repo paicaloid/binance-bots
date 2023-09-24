@@ -1,0 +1,26 @@
+{
+    "symbol": "OPUSDT",
+    "orderId": 743550530,
+    "orderListId": -1,
+    "clientOrderId": "g2FFs4vZhVVt7X8zKL0Nq7",
+    "transactTime": 1695563116028,
+    "price": "0.00000000",
+    "origQty": "3.86000000",
+    "executedQty": "3.86000000",
+    "cummulativeQuoteQty": "4.98712000",
+    "status": "FILLED",
+    "timeInForce": "GTC",
+    "type": "MARKET",
+    "side": "BUY",
+    "workingTime": 1695563116028,
+    "fills": [
+        {
+            "price": "1.29200000",
+            "qty": "3.86000000",
+            "commission": "0.00386000",
+            "commissionAsset": "OP",
+            "tradeId": 44030422
+        }
+    ],
+    "selfTradePreventionMode": "NONE"
+}
