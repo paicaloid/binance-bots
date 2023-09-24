@@ -117,7 +117,7 @@ def kline_list_to_df(
     df = df.astype(float)
     df["trades"] = df["trades"].astype(int)
 
-    return df
+    return df[:-1]
 
 
 def unicornfy_to_dataframe(kline: dict) -> pd.DataFrame:
