@@ -1,18 +1,26 @@
-import pandas as pd
-# import numpy as np
-import vectorbtpro as vbt
 import logging
 
-# from typing import Union
+import pandas as pd
+import pandas_ta as ta
 
 # from adx import ADX
 from .adx import ADX
-from .adx_config import adxSetting, emaSetting, rsiSetting
-from .adx_config import stochasticSetting, stopSetting
+from .adx_config import (
+    adxSetting,
+    emaSetting,
+    rsiSetting,
+    stochasticSetting,
+    stopSetting,
+)
+
+# import numpy as np
+# import vectorbtpro as vbt
+
+
+# from typing import Union
 
 
 class Strategy:
-
     def __init__(self):
         self.adx_setting = adxSetting()
         self.ema_setting = emaSetting()
@@ -75,50 +83,64 @@ class Strategy:
         self.plusDI = plusDI.iloc[-1]
         self.minusDI = minusDI.iloc[-1]
 
-        stoch_rsi = vbt.pandas_ta("STOCHRSI").run(
-            close_price,
+        # stoch_rsi = vbt.pandas_ta("STOCHRSI").run(
+        #     close_price,
+        #     length=self.stochastic_setting.stochastic_lenght,
+        #     rsi_length=self.rsi_setting.rsi_lenght,
+        #     k=self.stochastic_setting.smooth_k,
+        #     d=self.stochastic_setting.smooth_d,
+        # )
+        # self.k = stoch_rsi.stochrsik.iloc[-1]
+        # self.d = stoch_rsi.stochrsid.iloc[-1]
+        stoch_rsi = ta.stochrsi(
+            close=close_price,
             length=self.stochastic_setting.stochastic_lenght,
             rsi_length=self.rsi_setting.rsi_lenght,
             k=self.stochastic_setting.smooth_k,
             d=self.stochastic_setting.smooth_d,
         )
-        self.k = stoch_rsi.stochrsik.iloc[-1]
-        self.d = stoch_rsi.stochrsid.iloc[-1]
-
-        ema = vbt.pandas_ta("EMA").run(
+        self.k = stoch_rsi.iloc[-1, 0]
+        self.d = stoch_rsi.iloc[-1, 1]
+        # ema = vbt.pandas_ta("EMA").run(
+        #     close_price,
+        #     length=self.ema_setting.ema_length,
+        # )
+        # self.ema = ema.ema.iloc[-1]
+        self.ema = ta.ema(
             close_price,
             length=self.ema_setting.ema_length,
-        )
-        self.ema = ema.ema.iloc[-1]
+        ).iloc[-1]
 
-        ema_short = vbt.pandas_ta("EMA").run(
+        # ema_short = vbt.pandas_ta("EMA").run(
+        #     close_price,
+        #     length=self.ema_setting.ema_short_length,
+        # )
+
+        # self.ema_short = ema_short.ema.iloc[-1]
+        self.ema_short = ta.ema(
             close_price,
             length=self.ema_setting.ema_short_length,
-        )
-
-        self.ema_short = ema_short.ema.iloc[-1]
+        ).iloc[-1]
 
     def condition(self, close_price: float) -> None:
         self.buy_condition = (
-            (self.plusDI > self.minusDI) and
-            (self.plusDI > self.adx_setting.adx_level) and
-            (self.plusDI - self.minusDI > self.adx_setting.adx_diff)
+            (self.plusDI > self.minusDI)
+            and (self.plusDI > self.adx_setting.adx_level)
+            and (self.plusDI - self.minusDI > self.adx_setting.adx_diff)
         )
 
         self.sell_condition = (
-            (self.minusDI > self.plusDI) and
-            (self.minusDI > self.adx_setting.adx_level) and
-            (self.minusDI - self.plusDI > self.adx_setting.adx_diff)
+            (self.minusDI > self.plusDI)
+            and (self.minusDI > self.adx_setting.adx_level)
+            and (self.minusDI - self.plusDI > self.adx_setting.adx_diff)
         )
 
-        self.close_long_condition = (
-            (self.plusDI < self.minusDI) or
-            (self.plusDI < self.adx_setting.adx_level)
+        self.close_long_condition = (self.plusDI < self.minusDI) or (
+            self.plusDI < self.adx_setting.adx_level
         )
 
-        self.close_short_condition = (
-            (self.minusDI < self.plusDI) or
-            (self.minusDI < self.adx_setting.adx_level)
+        self.close_short_condition = (self.minusDI < self.plusDI) or (
+            self.minusDI < self.adx_setting.adx_level
         )
 
         self.price_above_ema = close_price > self.ema
@@ -126,13 +148,11 @@ class Strategy:
         self.price_above_short_ema = close_price > self.ema_short
         self.price_below_short_ema = close_price < self.ema_short
 
-        self.stoc_ob = (
-            (self.k >= self.stochastic_setting.overbought_level) and
-            (self.d >= self.stochastic_setting.overbought_level)
+        self.stoc_ob = (self.k >= self.stochastic_setting.overbought_level) and (
+            self.d >= self.stochastic_setting.overbought_level
         )
-        self.stoc_os = (
-            (self.k <= self.stochastic_setting.oversold_level) and
-            (self.d <= self.stochastic_setting.oversold_level)
+        self.stoc_os = (self.k <= self.stochastic_setting.oversold_level) and (
+            self.d <= self.stochastic_setting.oversold_level
         )
         self.run_trend_up = self.k > self.d
         self.run_trend_down = self.k < self.d
@@ -153,8 +173,11 @@ class Strategy:
             elif self.current_position > 0:
                 # print("TP/SL/TS")
                 logging.info("TP/SL/TS")
-            elif self.run_trend_up and self.price_above_ema and \
-                    self.price_above_short_ema:
+            elif (
+                self.run_trend_up
+                and self.price_above_ema
+                and self.price_above_short_ema
+            ):
                 # print("Open Long: ", close_price)
                 logging.info("Open Long: %s", close_price)
                 self.current_position = 1
@@ -173,38 +196,38 @@ class Strategy:
         high_price: float,
         low_price: float,
     ) -> None:
-
         if self.sell_condition:
             if self.current_position > 0 and self.price_below_ema:
                 print("Exit Long")
                 self.current_position = 0
             elif self.current_position < 0:
                 print("TP/SL/TS")
-            elif self.run_trend_down and self.price_below_ema and \
-                    self.price_below_short_ema:
+            elif (
+                self.run_trend_down
+                and self.price_below_ema
+                and self.price_below_short_ema
+            ):
                 print("Open Short: ", close_price)
                 self.current_position = -1
                 self.set_short_sl_tp_tr(price=close_price)
 
     def set_short_sl_tp_tr(self, price: float) -> None:
-        self.short_stop_loss = price * \
-            (1 + self.stop_setting.stop_loss)
-        self.short_take_profit = price * \
-            (1 - self.stop_setting.take_profit)
-        self.short_trail_stop_activate = price * \
-            (1 - self.stop_setting.trail_stop_activate)
+        self.short_stop_loss = price * (1 + self.stop_setting.stop_loss)
+        self.short_take_profit = price * (1 - self.stop_setting.take_profit)
+        self.short_trail_stop_activate = price * (
+            1 - self.stop_setting.trail_stop_activate
+        )
 
         print("Take Profit: ", self.short_take_profit)
         print("Stop Loss: ", self.short_stop_loss)
         print("Trail Stop Activation: ", self.short_trail_stop_activate)
 
     def set_long_sl_tp_tr(self, price: float) -> None:
-        self.long_stop_loss = price * \
-            (1 - self.stop_setting.stop_loss)
-        self.long_take_profit = price * \
-            (1 + self.stop_setting.take_profit)
-        self.long_trail_stop_activate = price * \
-            (1 + self.stop_setting.trail_stop_activate)
+        self.long_stop_loss = price * (1 - self.stop_setting.stop_loss)
+        self.long_take_profit = price * (1 + self.stop_setting.take_profit)
+        self.long_trail_stop_activate = price * (
+            1 + self.stop_setting.trail_stop_activate
+        )
 
         # print("Take Profit: ", self.long_take_profit)
         # print("Stop Loss: ", self.long_stop_loss)
@@ -220,18 +243,19 @@ class Strategy:
         high_price: float,
         low_price: float,
     ) -> None:
-
         if self.current_position < 0:
-
             if close_price <= self.short_trail_stop_activate:
                 print("Trail Stop Activate")
-                if self.short_lowest_price is None or \
-                        low_price < self.short_lowest_price:
+                if (
+                    self.short_lowest_price is None
+                    or low_price < self.short_lowest_price
+                ):
                     self.short_lowest_price = low_price
 
                 if self.short_lowest_price is not None:
-                    self.short_trail_stop = self.short_lowest_price * \
-                        (1 + self.stop_setting.trail_stop_execute)
+                    self.short_trail_stop = self.short_lowest_price * (
+                        1 + self.stop_setting.trail_stop_execute
+                    )
                     if close_price >= self.short_trail_stop:
                         print("Trail Stop")
                         self.current_position = 0
@@ -245,16 +269,18 @@ class Strategy:
         current_price: float,
     ) -> None:
         if self.current_position > 0:
-
             if current_price >= self.long_trail_stop_activate:
                 # print("Trail Stop Activate")
                 logging.info("Trail Stop Activate")
-                if self.long_highest_price is None or \
-                        current_price > self.long_highest_price:
+                if (
+                    self.long_highest_price is None
+                    or current_price > self.long_highest_price
+                ):
                     self.long_highest_price = current_price
                 if self.long_highest_price is not None:
-                    self.long_trail_stop = self.long_highest_price * \
-                        (1 - self.stop_setting.trail_stop_execute)
+                    self.long_trail_stop = self.long_highest_price * (
+                        1 - self.stop_setting.trail_stop_execute
+                    )
                     if current_price <= self.long_trail_stop:
                         # print("Trail Stop: ", current_price)
                         logging.info("Trail Stop: %s", current_price)
@@ -276,21 +302,23 @@ class Strategy:
         high_price: float,
         low_price: float,
     ) -> None:
-        '''
-            Check high price against trail stop activation
-            For backtesting purposes: use high price instead of current price
-        '''
+        """
+        Check high price against trail stop activation
+        For backtesting purposes: use high price instead of current price
+        """
         if self.current_position > 0:
-
             if high_price >= self.long_trail_stop_activate:
                 print("Trail Stop Activate")
-                if self.long_highest_price is None or \
-                        high_price > self.long_highest_price:
+                if (
+                    self.long_highest_price is None
+                    or high_price > self.long_highest_price
+                ):
                     self.long_highest_price = high_price
 
                 if self.long_highest_price is not None:
-                    self.long_trail_stop = self.long_highest_price * \
-                        (1 - self.stop_setting.trail_stop_execute)
+                    self.long_trail_stop = self.long_highest_price * (
+                        1 - self.stop_setting.trail_stop_execute
+                    )
                     if high_price <= self.long_trail_stop:
                         benchmark = self.long_highest_price
                         ts = self.long_trail_stop
