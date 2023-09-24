@@ -164,30 +164,28 @@ class Strategy:
         high_price: float,
         low_price: float,
     ) -> None:
-        # print(self.current_position)
-        # print(self.buy_condition, self.close_long_condition)
         if self.buy_condition:
             if self.current_position < 0 and self.price_above_ema:
-                print("Exit Short")
+                logging.info("Exit Short: %s", close_price)
                 self.current_position = 0
             elif self.current_position > 0:
-                # print("TP/SL/TS")
                 logging.info("TP/SL/TS")
             elif (
                 self.run_trend_up
                 and self.price_above_ema
                 and self.price_above_short_ema
             ):
-                # print("Open Long: ", close_price)
                 logging.info("Open Long: %s", close_price)
                 self.current_position = 1
                 self.set_long_sl_tp_tr(price=close_price)
 
         elif self.current_position > 0:
             if self.close_long_condition or self.price_below_ema:
-                # print("Exit Long :", close_price)
                 logging.info("Exit Long: %s", close_price)
                 self.current_position = 0
+
+        else:
+            logging.info("No position")
 
     def execute_order_short(
         self,
@@ -198,16 +196,16 @@ class Strategy:
     ) -> None:
         if self.sell_condition:
             if self.current_position > 0 and self.price_below_ema:
-                print("Exit Long")
+                logging.info("Exit Long: %s", close_price)
                 self.current_position = 0
             elif self.current_position < 0:
-                print("TP/SL/TS")
+                logging.info("TP/SL/TS")
             elif (
                 self.run_trend_down
                 and self.price_below_ema
                 and self.price_below_short_ema
             ):
-                print("Open Short: ", close_price)
+                logging.info("Open Short: %s", close_price)
                 self.current_position = -1
                 self.set_short_sl_tp_tr(price=close_price)
 
@@ -229,9 +227,6 @@ class Strategy:
             1 + self.stop_setting.trail_stop_activate
         )
 
-        # print("Take Profit: ", self.long_take_profit)
-        # print("Stop Loss: ", self.long_stop_loss)
-        # print("Trail Stop Activation: ", self.long_trail_stop_activate)
         logging.info("Take Profit: %s", self.long_take_profit)
         logging.info("Stop Loss: %s", self.long_stop_loss)
         logging.info("Trail Stop Act: %s", self.long_trail_stop_activate)
@@ -270,7 +265,6 @@ class Strategy:
     ) -> None:
         if self.current_position > 0:
             if current_price >= self.long_trail_stop_activate:
-                # print("Trail Stop Activate")
                 logging.info("Trail Stop Activate")
                 if (
                     self.long_highest_price is None
@@ -282,16 +276,13 @@ class Strategy:
                         1 - self.stop_setting.trail_stop_execute
                     )
                     if current_price <= self.long_trail_stop:
-                        # print("Trail Stop: ", current_price)
                         logging.info("Trail Stop: %s", current_price)
                         self.current_position = 0
 
             if current_price >= self.long_take_profit:
-                # print("Take Profit: ", current_price)
                 logging.info("Take Profit: %s", current_price)
                 self.current_position = 0
             elif current_price <= self.long_stop_loss:
-                # print("Stop Loss: ", current_price)
                 logging.info("Stop Loss: %s", current_price)
                 self.current_position = 0
 
