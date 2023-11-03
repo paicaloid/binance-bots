@@ -9,3 +9,4 @@ websockets
 pydantic
 pydantic-settings
 pandas_ta
+binance-futures-connector
