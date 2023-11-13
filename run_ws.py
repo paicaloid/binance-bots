@@ -1,0 +1,207 @@
+import asyncio
+import logging
+import os
+import time
+
+import pandas as pd
+from binance import AsyncClient, BinanceSocketManager
+from dotenv import find_dotenv, load_dotenv
+
+from future_api.client import BinanceFuturesAPI
+from strategys.adx_strategy import Strategy
+from utils.helpers import kline_to_dataframe
+
+load_dotenv(
+    find_dotenv(filename=".env.local", raise_error_if_not_found=True),
+    override=True,
+)
+API_KEY = os.getenv("API_KEY")
+API_SECRET = os.getenv("API_SECRET")
+
+
+logging.getLogger("OPUSDT_ALGO_TRADING_V2")
+logging.basicConfig(
+    level=logging.INFO,
+    filename=os.path.basename(__file__) + "_V2.log",
+    format="{asctime} [{levelname:8}] {process} {thread} {module}: {message}",
+    style="{",
+)
+
+
+class BinanceHandler:
+    def __init__(
+        self, base_asset: str, quote_asset: str, interval: str = "1h", limit: int = 250
+    ):
+        self.symbol = f"{base_asset}{quote_asset}"
+        self.interval = interval
+        self.limit = limit
+
+        self.binance_api = BinanceFuturesAPI(
+            base_asset=base_asset, quote_asset=quote_asset
+        )
+        self.data = self.binance_api.historical_kline(
+            symbol=self.symbol, interval=self.interval, limit=self.limit
+        )
+
+    def update_dataframe(self, kline: dict):
+        new_kline = kline_to_dataframe(kline)
+        self.data = pd.concat([self.data, new_kline])
+        self.data = self.data.iloc[-self.limit :]
+
+    def check_long_condition(
+        self, price_above_ema: bool, price_above_short_ema: bool, run_trend_up: bool
+    ):
+        position = self.binance_api.get_position()
+        if position < 0 and price_above_ema:
+            self.binance_api.exit_short_market()
+            time.sleep(1)
+            if run_trend_up and price_above_ema and price_above_short_ema:
+                self.binance_api.enter_long_market()
+                time.sleep(1)
+                self.binance_api.place_long_stop_signal()
+                logging.info("Exit short and Enter long")
+            else:
+                logging.info("Exit short")
+        elif (
+            position == 0 and run_trend_up and price_above_ema and price_above_short_ema
+        ):
+            self.binance_api.enter_long_market()
+            time.sleep(1)
+            self.binance_api.place_long_stop_signal()
+            logging.info("Enter long")
+        else:
+            logging.info("No Long condition")
+
+    def check_short_condition(
+        self, price_below_ema: bool, price_below_short_ema: bool, run_trend_down: bool
+    ):
+        position = self.binance_api.get_position()
+        if position > 0 and price_below_ema:
+            self.binance_api.exit_long_market()
+            time.sleep(1)
+            if run_trend_down and price_below_ema and price_below_short_ema:
+                self.binance_api.enter_short_market()
+                time.sleep(1)
+                self.binance_api.place_short_stop_signal()
+                logging.info("Exit long and Enter short")
+            else:
+                logging.info("Exit long")
+        elif (
+            position == 0
+            and run_trend_down
+            and price_below_ema
+            and price_below_short_ema
+        ):
+            self.binance_api.enter_short_market()
+            time.sleep(1)
+            self.binance_api.place_short_stop_signal()
+            logging.info("Enter short")
+        else:
+            logging.info("No Short condition")
+
+    def check_close_long_condition(self, price_below_ema: bool):
+        position = self.binance_api.get_position()
+        if position > 0 and price_below_ema:
+            self.binance_api.exit_long_market()
+            logging.info("Exit long")
+        else:
+            logging.info("No Close long condition")
+
+    def check_close_short_condition(self, price_above_ema: bool):
+        position = self.binance_api.get_position()
+        if position < 0 and price_above_ema:
+            self.binance_api.exit_short_market()
+            logging.info("Exit short")
+        else:
+            logging.info("No Close short condition")
+
+
+async def main(base_asset: str, quote_asset: str, interval: str, limit: int):
+    symbol = f"{base_asset}{quote_asset}"
+    client = await AsyncClient.create()
+    bm = BinanceSocketManager(client)
+    ts = bm.kline_futures_socket(symbol=symbol, interval=interval)
+
+    bn_handler = BinanceHandler(
+        base_asset=base_asset, quote_asset=quote_asset, interval=interval, limit=limit
+    )
+    strategy = Strategy()
+    count_alive = 0
+    logging.info("Start trading")
+    async with ts as tscm:
+        while True:
+            response = await tscm.recv()
+            count_alive += 1
+            if response.get("e") == "continuous_kline":
+                if response.get("k").get("x"):
+                    logging.info(response)
+                    bn_handler.update_dataframe(kline=response)
+                    strategy.compute_signal(
+                        close_price=bn_handler.data["close"],
+                        high_price=bn_handler.data["high"],
+                        low_price=bn_handler.data["low"],
+                    )
+                    strategy.condition(close_price=bn_handler.data["close"].iloc[-1])
+                    logging.info("Long condition: " + str(strategy.buy_condition))
+                    logging.info(
+                        "Close long condition: " + str(strategy.close_long_condition)
+                    )
+                    logging.info("Short condition: " + str(strategy.sell_condition))
+                    logging.info(
+                        "Close short condition: " + str(strategy.close_short_condition)
+                    )
+                    logging.info("Price above EMA: " + str(strategy.price_above_ema))
+                    logging.info(
+                        "Price above short EMA: " + str(strategy.price_above_short_ema)
+                    )
+                    logging.info("Price below EMA: " + str(strategy.price_below_ema))
+                    logging.info(
+                        "Price below short EMA: " + str(strategy.price_below_short_ema)
+                    )
+                    logging.info("Run trend up: " + str(strategy.run_trend_up))
+                    logging.info("Run trend down: " + str(strategy.run_trend_down))
+
+                    if strategy.buy_condition:
+                        bn_handler.check_long_condition(
+                            price_above_ema=strategy.price_above_ema,
+                            price_above_short_ema=strategy.price_above_short_ema,
+                            run_trend_up=strategy.run_trend_up,
+                        )
+                    elif strategy.close_long_condition:
+                        bn_handler.check_close_long_condition(
+                            price_below_ema=strategy.price_below_ema
+                        )
+
+                    if strategy.sell_condition:
+                        bn_handler.check_short_condition(
+                            price_below_ema=strategy.price_below_ema,
+                            price_below_short_ema=strategy.price_below_short_ema,
+                            run_trend_down=strategy.run_trend_down,
+                        )
+                    elif strategy.close_short_condition:
+                        bn_handler.check_close_short_condition(
+                            price_above_ema=strategy.price_above_ema
+                        )
+                else:
+                    # print("Not closed")
+                    pass
+            else:
+                logging.error(response)
+                ts.close()
+                logging.info("Restarting socket")
+                ts = bm.kline_futures_socket(symbol=symbol, interval=interval)
+                count_alive = 0
+                continue
+
+            if count_alive > 2000:
+                logging.info("Still alive")
+                count_alive = 0
+
+
+if __name__ == "__main__":
+    # ws = BinanceWebsocket(symbol="OPUSDT")
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(
+        main(base_asset="OP", quote_asset="USDT", interval="1h", limit=250)
+    )
+    print("ok")
