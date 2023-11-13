@@ -49,7 +49,7 @@ def take_profit():
         side=SIDE_SELL,
         # positionSide="LONG",
         type=FUTURE_ORDER_TYPE_TAKE_PROFIT_MARKET,
-        stopPrice=1.431,
+        stopPrice=1.7881,
         closePosition=True,
         timeInForce="GTE_GTC",
     )
@@ -61,7 +61,7 @@ def stop_loss():
         side=SIDE_SELL,
         # positionSide="LONG",
         type=FUTURE_ORDER_TYPE_STOP_MARKET,
-        stopPrice=1.3095,
+        stopPrice=1.685,
         closePosition=True,
         timeInForce="GTE_GTC",
     )
@@ -73,17 +73,17 @@ def trail_stop():
         side=SIDE_SELL,
         # positionSide="LONG",
         type=FUTURE_ORDER_TYPE_TRAILING_STOP_MARKET,
-        activationPrice=1.3905,
+        activationPrice=1.7557,
         callbackRate=1,
         # closePosition=True,
-        quantity=6,
+        quantity=9.4,
         timeInForce="GTC",
     )
 
 
 # take_profit()
 # stop_loss()
-trail_stop()
+# trail_stop()
 
 # balance = client.futures_account_balance()
 # print(balance)
