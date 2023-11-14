@@ -1,3 +1,4 @@
+import logging
 import os
 
 import numpy as np
@@ -21,6 +22,7 @@ from binance.enums import (  # noqa
 from dotenv import find_dotenv, load_dotenv
 
 from utils.helpers import kline_list_to_df
+from utils.telegram_api import send_message
 
 load_dotenv(
     find_dotenv(filename=".env.local", raise_error_if_not_found=True),
@@ -91,6 +93,7 @@ class BinanceFuturesAPI:
             type=FUTURE_ORDER_TYPE_MARKET,
             quantity=self.calculate_quantity(),
         )
+        send_message(msg="Enter long")
 
     def enter_short_market(self):
         self.client.futures_create_order(
@@ -99,6 +102,7 @@ class BinanceFuturesAPI:
             type=FUTURE_ORDER_TYPE_MARKET,
             quantity=self.calculate_quantity(),
         )
+        send_message(msg="Enter short")
 
     def exit_long_market(self):
         self.client.futures_create_order(
@@ -107,6 +111,7 @@ class BinanceFuturesAPI:
             type=FUTURE_ORDER_TYPE_MARKET,
             closePosition=True,
         )
+        send_message(msg="Exit long")
 
     def exit_short_market(self):
         self.client.futures_create_order(
@@ -115,6 +120,7 @@ class BinanceFuturesAPI:
             type=FUTURE_ORDER_TYPE_MARKET,
             closePosition=True,
         )
+        send_message(msg="Exit short")
 
     def place_long_stop_signal(self):
         entry_price = self.get_entry_price()
@@ -124,6 +130,8 @@ class BinanceFuturesAPI:
         sl_price = float(f"{sl_price:.4f}")
         tl_act_price = entry_price * (1 + self.tl_act_pct)
         tl_act_price = float(f"{tl_act_price:.4f}")
+        logging.info(f"entry_price: {entry_price}")
+        logging.info(f"TP: {tp_price}, SL: {sl_price}, TL: {tl_act_price}")
 
         self.client.futures_create_order(
             symbol=self.symbol,
@@ -149,6 +157,13 @@ class BinanceFuturesAPI:
             callbackRate=self.tl_exec_pct,
             quantity=self.get_position(),
             timeInForce="GTC",
+        )
+        send_message(
+            msg=f"""
+            Place long stop signal
+            Entry price: {entry_price}
+            TP: {tp_price}, SL: {sl_price}, TL: {tl_act_price}
+            """
         )
 
     def place_short_stop_signal(self):
@@ -159,6 +174,8 @@ class BinanceFuturesAPI:
         sl_price = float(f"{sl_price:.4f}")
         tl_act_price = entry_price * (1 - self.tl_act_pct)
         tl_act_price = float(f"{tl_act_price:.4f}")
+        logging.info(f"entry_price: {entry_price}")
+        logging.info(f"TP: {tp_price}, SL: {sl_price}, TL: {tl_act_price}")
 
         self.client.futures_create_order(
             symbol=self.symbol,
@@ -184,4 +201,11 @@ class BinanceFuturesAPI:
             callbackRate=self.tl_exec_pct,
             quantity=self.get_position(),
             timeInForce="GTC",
+        )
+        send_message(
+            msg=f"""
+            Place short stop signal
+            Entry price: {entry_price}
+            TP: {tp_price}, SL: {sl_price}, TL: {tl_act_price}
+            """
         )

@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import time
+from datetime import datetime
 
 import pandas as pd
 from binance import AsyncClient, BinanceSocketManager
@@ -10,6 +11,7 @@ from dotenv import find_dotenv, load_dotenv
 from future_api.client import BinanceFuturesAPI
 from strategys.adx_strategy import Strategy
 from utils.helpers import kline_to_dataframe
+from utils.telegram_api import send_message
 
 load_dotenv(
     find_dotenv(filename=".env.local", raise_error_if_not_found=True),
@@ -22,7 +24,9 @@ API_SECRET = os.getenv("API_SECRET")
 logging.getLogger("OPUSDT_ALGO_TRADING_V2")
 logging.basicConfig(
     level=logging.INFO,
-    filename=os.path.basename(__file__) + "_V2.log",
+    filename="logs/"
+    + os.path.basename(__file__)
+    + f"{datetime.now():%Y-%m-%d_%H:%M:%S%z}.log",
     format="{asctime} [{levelname:8}] {process} {thread} {module}: {message}",
     style="{",
 )
@@ -43,6 +47,8 @@ class BinanceHandler:
             symbol=self.symbol, interval=self.interval, limit=self.limit
         )
 
+        self.delay = 2
+
     def update_dataframe(self, kline: dict):
         new_kline = kline_to_dataframe(kline)
         self.data = pd.concat([self.data, new_kline])
@@ -54,10 +60,10 @@ class BinanceHandler:
         position = self.binance_api.get_position()
         if position < 0 and price_above_ema:
             self.binance_api.exit_short_market()
-            time.sleep(1)
+            time.sleep(self.delay)
             if run_trend_up and price_above_ema and price_above_short_ema:
                 self.binance_api.enter_long_market()
-                time.sleep(1)
+                time.sleep(self.delay)
                 self.binance_api.place_long_stop_signal()
                 logging.info("Exit short and Enter long")
             else:
@@ -66,7 +72,7 @@ class BinanceHandler:
             position == 0 and run_trend_up and price_above_ema and price_above_short_ema
         ):
             self.binance_api.enter_long_market()
-            time.sleep(1)
+            time.sleep(self.delay)
             self.binance_api.place_long_stop_signal()
             logging.info("Enter long")
         else:
@@ -78,10 +84,10 @@ class BinanceHandler:
         position = self.binance_api.get_position()
         if position > 0 and price_below_ema:
             self.binance_api.exit_long_market()
-            time.sleep(1)
+            time.sleep(self.delay)
             if run_trend_down and price_below_ema and price_below_short_ema:
                 self.binance_api.enter_short_market()
-                time.sleep(1)
+                time.sleep(self.delay)
                 self.binance_api.place_short_stop_signal()
                 logging.info("Exit long and Enter short")
             else:
@@ -93,7 +99,7 @@ class BinanceHandler:
             and price_below_short_ema
         ):
             self.binance_api.enter_short_market()
-            time.sleep(1)
+            time.sleep(self.delay)
             self.binance_api.place_short_stop_signal()
             logging.info("Enter short")
         else:
@@ -128,6 +134,7 @@ async def main(base_asset: str, quote_asset: str, interval: str, limit: int):
     strategy = Strategy()
     count_alive = 0
     logging.info("Start trading")
+    send_message(msg="Start trading")
     async with ts as tscm:
         while True:
             response = await tscm.recv()
@@ -142,24 +149,22 @@ async def main(base_asset: str, quote_asset: str, interval: str, limit: int):
                         low_price=bn_handler.data["low"],
                     )
                     strategy.condition(close_price=bn_handler.data["close"].iloc[-1])
-                    logging.info("Long condition: " + str(strategy.buy_condition))
-                    logging.info(
-                        "Close long condition: " + str(strategy.close_long_condition)
-                    )
-                    logging.info("Short condition: " + str(strategy.sell_condition))
-                    logging.info(
-                        "Close short condition: " + str(strategy.close_short_condition)
-                    )
-                    logging.info("Price above EMA: " + str(strategy.price_above_ema))
-                    logging.info(
-                        "Price above short EMA: " + str(strategy.price_above_short_ema)
-                    )
-                    logging.info("Price below EMA: " + str(strategy.price_below_ema))
-                    logging.info(
-                        "Price below short EMA: " + str(strategy.price_below_short_ema)
-                    )
-                    logging.info("Run trend up: " + str(strategy.run_trend_up))
-                    logging.info("Run trend down: " + str(strategy.run_trend_down))
+                    long_condition = {
+                        "Long": strategy.buy_condition,
+                        "Close_Long": strategy.close_long_condition,
+                        "Price_above_EMA": strategy.price_above_ema,
+                        "Price_above_short_EMA": strategy.price_above_short_ema,
+                        "Run_trend_up": strategy.run_trend_up,
+                    }
+                    short_condition = {
+                        "Short": strategy.sell_condition,
+                        "Close_Short": strategy.close_short_condition,
+                        "Price_below_EMA": strategy.price_below_ema,
+                        "Price_below_short_EMA": strategy.price_below_short_ema,
+                        "Run_trend_down": strategy.run_trend_down,
+                    }
+                    logging.info(long_condition)
+                    logging.info(short_condition)
 
                     if strategy.buy_condition:
                         bn_handler.check_long_condition(
@@ -189,13 +194,15 @@ async def main(base_asset: str, quote_asset: str, interval: str, limit: int):
                 logging.error(response)
                 ts.close()
                 logging.info("Restarting socket")
+                send_message(msg="Restarting socket")
                 ts = bm.kline_futures_socket(symbol=symbol, interval=interval)
                 count_alive = 0
                 continue
 
-            if count_alive > 2000:
+            if count_alive > 3000:
                 logging.info("Still alive")
                 count_alive = 0
+                send_message(msg="Still alive")
 
 
 if __name__ == "__main__":
@@ -204,4 +211,4 @@ if __name__ == "__main__":
     loop.run_until_complete(
         main(base_asset="OP", quote_asset="USDT", interval="1h", limit=250)
     )
-    print("ok")
+    send_message(msg="Trading stopped")
