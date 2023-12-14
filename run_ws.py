@@ -57,7 +57,7 @@ class BinanceHandler:
     def check_long_condition(
         self, price_above_ema: bool, price_above_short_ema: bool, run_trend_up: bool
     ):
-        position = self.binance_api.get_position()
+        position = self.binance_api.get_real_position()
         if position < 0 and price_above_ema:
             self.binance_api.exit_short_market()
             time.sleep(self.delay)
@@ -71,6 +71,7 @@ class BinanceHandler:
         elif (
             position == 0 and run_trend_up and price_above_ema and price_above_short_ema
         ):
+            self.binance_api.cancel_all_orders()
             self.binance_api.enter_long_market()
             time.sleep(self.delay)
             self.binance_api.place_long_stop_signal()
@@ -81,7 +82,7 @@ class BinanceHandler:
     def check_short_condition(
         self, price_below_ema: bool, price_below_short_ema: bool, run_trend_down: bool
     ):
-        position = self.binance_api.get_position()
+        position = self.binance_api.get_real_position()
         if position > 0 and price_below_ema:
             self.binance_api.exit_long_market()
             time.sleep(self.delay)
@@ -98,6 +99,7 @@ class BinanceHandler:
             and price_below_ema
             and price_below_short_ema
         ):
+            self.binance_api.cancel_all_orders()
             self.binance_api.enter_short_market()
             time.sleep(self.delay)
             self.binance_api.place_short_stop_signal()
@@ -106,7 +108,7 @@ class BinanceHandler:
             logging.info("No Short condition")
 
     def check_close_long_condition(self, price_below_ema: bool):
-        position = self.binance_api.get_position()
+        position = self.binance_api.get_real_position()
         if position > 0 and price_below_ema:
             self.binance_api.exit_long_market()
             logging.info("Exit long")
@@ -114,7 +116,7 @@ class BinanceHandler:
             logging.info("No Close long condition")
 
     def check_close_short_condition(self, price_above_ema: bool):
-        position = self.binance_api.get_position()
+        position = self.binance_api.get_real_position()
         if position < 0 and price_above_ema:
             self.binance_api.exit_short_market()
             logging.info("Exit short")
