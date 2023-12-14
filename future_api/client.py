@@ -46,9 +46,9 @@ class BinanceFuturesAPI:
         self.update_position()
 
         self.tp_pct = 0.16
-        self.sl_pct = 0.03
-        self.tl_act_pct = 0.01
-        self.tl_exec_pct = 0.001 * 100
+        self.sl_pct = 0.02
+        self.tl_act_pct = 0.02
+        self.tl_exec_pct = 1  # min 0.1, max 5 where 1 for 1%
 
         # if self.base_position != 0:
         #     raise ValueError("Base position must be 0")
@@ -63,13 +63,21 @@ class BinanceFuturesAPI:
             if data.get("symbol") == self.symbol:
                 self.base_position = float(data.get("positionAmt"))
 
+    def cancel_all_orders(self) -> None:
+        self.client.futures_cancel_all_open_orders(symbol=self.symbol)
+        send_message(msg="Cancel all orders")
+
     def get_entry_price(self) -> float:
         info = self.client.futures_position_information(symbol=self.symbol)[0]
         return float(info.get("entryPrice"))
 
-    def get_position(self) -> float:
+    def get_abs_position(self) -> float:
         info = self.client.futures_position_information(symbol=self.symbol)[0]
         return np.abs(float(info.get("positionAmt")))
+
+    def get_real_position(self) -> float:
+        info = self.client.futures_position_information(symbol=self.symbol)[0]
+        return float(info.get("positionAmt"))
 
     def historical_kline(self, symbol: str, interval: str, limit: int) -> pd.DataFrame:
         return kline_list_to_df(
@@ -87,40 +95,58 @@ class BinanceFuturesAPI:
         return float(f"{quantity:.1f}")
 
     def enter_long_market(self):
-        self.client.futures_create_order(
+        res = self.client.futures_create_order(
             symbol=self.symbol,
             side=SIDE_BUY,
             type=FUTURE_ORDER_TYPE_MARKET,
             quantity=self.calculate_quantity(),
         )
+        logging.info("Enter long")
+        logging.info(res)
         send_message(msg="Enter long")
 
     def enter_short_market(self):
-        self.client.futures_create_order(
+        res = self.client.futures_create_order(
             symbol=self.symbol,
             side=SIDE_SELL,
             type=FUTURE_ORDER_TYPE_MARKET,
             quantity=self.calculate_quantity(),
         )
+        logging.info("Enter short")
+        logging.info(res)
         send_message(msg="Enter short")
 
     def exit_long_market(self):
-        self.client.futures_create_order(
-            symbol=self.symbol,
-            side=SIDE_SELL,
-            type=FUTURE_ORDER_TYPE_MARKET,
-            closePosition=True,
-        )
-        send_message(msg="Exit long")
+        try:
+            res = self.client.futures_create_order(
+                symbol=self.symbol,
+                side=SIDE_SELL,
+                type=FUTURE_ORDER_TYPE_MARKET,
+                # closePosition=True,
+                quantity=self.get_abs_position(),
+            )
+            logging.info("Exit long")
+            logging.info(res)
+            send_message(msg="Exit long")
+        except Exception as e:
+            logging.error(e)
+            send_message(msg=f"Error: {e}")
 
     def exit_short_market(self):
-        self.client.futures_create_order(
-            symbol=self.symbol,
-            side=SIDE_BUY,
-            type=FUTURE_ORDER_TYPE_MARKET,
-            closePosition=True,
-        )
-        send_message(msg="Exit short")
+        try:
+            res = self.client.futures_create_order(
+                symbol=self.symbol,
+                side=SIDE_BUY,
+                type=FUTURE_ORDER_TYPE_MARKET,
+                # closePosition=True,
+                quantity=self.get_abs_position(),
+            )
+            logging.info("Exit short")
+            logging.info(res)
+            send_message(msg="Exit short")
+        except Exception as e:
+            logging.error(e)
+            send_message(msg=f"Error: {e}")
 
     def place_long_stop_signal(self):
         entry_price = self.get_entry_price()
@@ -132,8 +158,8 @@ class BinanceFuturesAPI:
         tl_act_price = float(f"{tl_act_price:.4f}")
         logging.info(f"entry_price: {entry_price}")
         logging.info(f"TP: {tp_price}, SL: {sl_price}, TL: {tl_act_price}")
-
-        self.client.futures_create_order(
+        logging.info("Place long stop signal")
+        res = self.client.futures_create_order(
             symbol=self.symbol,
             side=SIDE_SELL,
             type=FUTURE_ORDER_TYPE_TAKE_PROFIT_MARKET,
@@ -141,7 +167,8 @@ class BinanceFuturesAPI:
             closePosition=True,
             timeInForce="GTE_GTC",
         )
-        self.client.futures_create_order(
+        logging.info(res)
+        res = self.client.futures_create_order(
             symbol=self.symbol,
             side=SIDE_SELL,
             type=FUTURE_ORDER_TYPE_STOP_MARKET,
@@ -149,15 +176,17 @@ class BinanceFuturesAPI:
             closePosition=True,
             timeInForce="GTE_GTC",
         )
-        self.client.futures_create_order(
+        logging.info(res)
+        res = self.client.futures_create_order(
             symbol=self.symbol,
             side=SIDE_SELL,
             type=FUTURE_ORDER_TYPE_TRAILING_STOP_MARKET,
             activationPrice=tl_act_price,
             callbackRate=self.tl_exec_pct,
-            quantity=self.get_position(),
+            quantity=self.get_abs_position(),
             timeInForce="GTC",
         )
+        logging.info(res)
         send_message(
             msg=f"""
             Place long stop signal
@@ -176,8 +205,9 @@ class BinanceFuturesAPI:
         tl_act_price = float(f"{tl_act_price:.4f}")
         logging.info(f"entry_price: {entry_price}")
         logging.info(f"TP: {tp_price}, SL: {sl_price}, TL: {tl_act_price}")
+        logging.info("Place short stop signal")
 
-        self.client.futures_create_order(
+        res = self.client.futures_create_order(
             symbol=self.symbol,
             side=SIDE_BUY,
             type=FUTURE_ORDER_TYPE_TAKE_PROFIT_MARKET,
@@ -185,7 +215,8 @@ class BinanceFuturesAPI:
             closePosition=True,
             timeInForce="GTE_GTC",
         )
-        self.client.futures_create_order(
+        logging.info(res)
+        res = self.client.futures_create_order(
             symbol=self.symbol,
             side=SIDE_BUY,
             type=FUTURE_ORDER_TYPE_STOP_MARKET,
@@ -193,15 +224,17 @@ class BinanceFuturesAPI:
             closePosition=True,
             timeInForce="GTE_GTC",
         )
-        self.client.futures_create_order(
+        logging.info(res)
+        res = self.client.futures_create_order(
             symbol=self.symbol,
             side=SIDE_BUY,
             type=FUTURE_ORDER_TYPE_TRAILING_STOP_MARKET,
             activationPrice=tl_act_price,
             callbackRate=self.tl_exec_pct,
-            quantity=self.get_position(),
+            quantity=self.get_abs_position(),
             timeInForce="GTC",
         )
+        logging.info(res)
         send_message(
             msg=f"""
             Place short stop signal
