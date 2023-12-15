@@ -156,6 +156,34 @@ def unicornfy_to_dataframe(kline: dict) -> pd.DataFrame:
     return df
 
 
+def kline_to_dataframe(kline: dict) -> pd.DataFrame:
+    data = {
+        key: kline.get("k").get(key)
+        for key in ["t", "o", "c", "h", "l", "v", "n", "q", "V", "Q"]
+    }
+    df = pd.DataFrame([data])
+    df = df.rename(
+        columns={
+            "t": "datetime",
+            "o": "open",
+            "c": "close",
+            "h": "high",
+            "l": "low",
+            "v": "volume",
+            "n": "trades",
+            "q": "quote_asset",
+            "V": "taker_buy_base",
+            "Q": "take_buy_quote",
+        }
+    )
+    df["datetime"] = pd.to_datetime(df["datetime"], unit="ms", utc=True)
+    df["datetime"] = df["datetime"].dt.tz_convert("Asia/Bangkok")
+    df = df.set_index("datetime")
+    df = df.astype(float)
+    df["trades"] = df["trades"].astype(int)
+    return df
+
+
 def place_order_market_buy(
     client: Client,
     symbol: str,

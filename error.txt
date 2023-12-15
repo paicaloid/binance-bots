@@ -1,0 +1,64 @@
+    loop.run_until_complete(
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/home/erudite/binance-bots/run_ws.py", line 164, in main
+    bn_handler.check_long_condition(
+  File "/home/erudite/binance-bots/run_ws.py", line 70, in check_long_condition
+    self.binance_api.place_long_stop_signal()
+  File "/home/erudite/binance-bots/future_api/client.py", line 141, in place_long_stop_signal
+    self.client.futures_create_order(
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/site-packages/binance/client.py", line 6504, in futures_create_order
+    return self._request_futures_api('post', 'order', True, data=params)
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/site-packages/binance/client.py", line 383, in _request_futures_api
+    return self._request(method, uri, signed, True, **kwargs)
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/site-packages/binance/client.py", line 359, in _request
+    return self._handle_response(self.response)
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/site-packages/binance/client.py", line 368, in _handle_response
+    raise BinanceAPIException(response, response.status_code, response.text)
+binance.exceptions.BinanceAPIException: APIError(code=-1102): Mandatory parameter 'activationprice' was not sent, was empty/null, or malformed.
+
+
+
+
+
+
+(binance) erudite@ecs-b9e4:~/binance-bots$ python run_ws.py
+Traceback (most recent call last):
+  File "/home/erudite/binance-bots/run_ws.py", line 204, in <module>
+    loop.run_until_complete(
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/home/erudite/binance-bots/run_ws.py", line 165, in main
+    bn_handler.check_long_condition(
+  File "/home/erudite/binance-bots/run_ws.py", line 70, in check_long_condition
+    self.binance_api.place_long_stop_signal()
+  File "/home/erudite/binance-bots/future_api/client.py", line 128, in place_long_stop_signal
+    self.client.futures_create_order(
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/site-packages/binance/client.py", line 6504, in futures_create_order
+    return self._request_futures_api('post', 'order', True, data=params)
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/site-packages/binance/client.py", line 383, in _request_futures_api
+    return self._request(method, uri, signed, True, **kwargs)
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/site-packages/binance/client.py", line 359, in _request
+    return self._handle_response(self.response)
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/site-packages/binance/client.py", line 368, in _handle_response
+    raise BinanceAPIException(response, response.status_code, response.text)
+binance.exceptions.BinanceAPIException: APIError(code=-4006): Stop price less than zero.
+
+
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/home/erudite/binance-bots/run_ws.py", line 176, in main
+    bn_handler.check_close_long_condition(
+  File "/home/erudite/binance-bots/run_ws.py", line 111, in check_close_long_condition
+    self.binance_api.exit_long_market()
+  File "/home/erudite/binance-bots/future_api/client.py", line 108, in exit_long_market
+    self.client.futures_create_order(
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/site-packages/binance/client.py", line 6504, in futures_create_order
+    return self._request_futures_api('post', 'order', True, data=params)
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/site-packages/binance/client.py", line 383, in _request_futures_api
+    return self._request(method, uri, signed, True, **kwargs)
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/site-packages/binance/client.py", line 359, in _request
+    return self._handle_response(self.response)
+  File "/home/erudite/miniconda3/envs/binance/lib/python3.10/site-packages/binance/client.py", line 368, in _handle_response
+    raise BinanceAPIException(response, response.status_code, response.text)
+binance.exceptions.BinanceAPIException: APIError(code=-4136): Target strategy invalid for orderType MARKET,closePosition true
