@@ -7,6 +7,7 @@ from binance import AsyncClient, BinanceSocketManager
 from dotenv import find_dotenv, load_dotenv
 
 from utils.telegram_api import send_message
+from utils.telegram_msg import TelegramMessage
 
 load_dotenv(
     find_dotenv(filename=".env.local", raise_error_if_not_found=True),
@@ -30,11 +31,19 @@ async def main():
     client = await AsyncClient.create(API_KEY, API_SECRET)
     bm = BinanceSocketManager(client)
     ts = bm.futures_user_socket()
+    telegram_msg = TelegramMessage()
     async with ts as tscm:
         while True:
             response = await tscm.recv()
-            logging.info(response)
-            send_message(msg=response)
+            event_type = response.get("e")
+            if event_type == "ORDER_TRADE_UPDATE":
+                telegram_msg.new_order_message(response=response)
+                msg = telegram_msg.entry_message()
+                if msg is not None:
+                    send_message(msg=msg)
+                msg = telegram_msg.exit_message()
+                if msg is not None:
+                    send_message(msg=msg)
 
 
 if __name__ == "__main__":
