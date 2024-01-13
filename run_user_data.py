@@ -36,7 +36,7 @@ async def main():
         while True:
             response = await tscm.recv()
             event_type = response.get("e")
-            if event_type == "ACCOUNT_UPDATE":
+            if event_type == "ORDER_TRADE_UPDATE":
                 telegram_msg.new_order_message(response=response)
                 msg = telegram_msg.entry_message()
                 if msg is not None:
