@@ -191,6 +191,7 @@ async def main(base_asset: str, quote_asset: str, interval: str, limit: int):
                         )
                 else:
                     # print("Not closed")
+                    # logging.info("Waiting")
                     pass
             else:
                 logging.error(response)
@@ -201,10 +202,10 @@ async def main(base_asset: str, quote_asset: str, interval: str, limit: int):
                 count_alive = 0
                 continue
 
-            if count_alive > 3000:
-                logging.info("Still alive")
-                count_alive = 0
-                send_message(msg="Still alive")
+            # if count_alive > 3000:
+            #     logging.info("Still alive")
+            #     count_alive = 0
+            #     send_message(msg="Still alive")
 
 
 if __name__ == "__main__":
